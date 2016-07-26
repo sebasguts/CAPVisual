@@ -1,0 +1,135 @@
+<!doctype html>
+<html>
+<head>
+    <title>CAP Animation: SpectralSequencesTest.gi</title>
+
+    <script type="text/javascript" src="vis.min.js"></script>
+    <script type="text/javascript" src="test.js"></script>
+    <link href="vis.min.css" rel="stylesheet" type="text/css" />
+
+    <style type="text/css">
+        #mynetwork {
+            width: 800px;
+            height: 800px;
+            border: 1px solid lightgray;
+        }
+
+        p {
+            max-width:600px;
+        }
+
+        h4 {
+            margin-bottom:3px;
+        }
+    </style>
+</head>
+
+<input type="button" onclick="next()" value="Next step"><br/>
+<!-- <input type="button" onclick="previous()" value="Previous step"><br/> -->
+<input type="button" onclick="play()" value="Animate"><br/>
+<input type="button" onclick="pause()" value="Pause animation"><br/>
+<input type="button" onclick="restart()" value="Restart"><br/>
+
+<p>Current frame: <inline id="current_frame">0</inline> / <inline id="all_frames">0</inline></p>
+<p>Animation frame time (in ms): <input type="number" id="animation_speed" value="0"> </p>
+<p>Animation force stabilisation: <input type="checkbox" id="animation_force_stabilize"> </p>
+
+<div id="mynetwork"></div>
+
+<script type="text/javascript">
+    var nodeIds, shadowState, nodes, edges, network;
+    var animate = true;
+    
+    var current=0;
+    var speed = 2000;
+    
+    var stabilize_animation = false;
+    
+    function startNetwork() {
+        shadowState = false;
+
+        nodes = new vis.DataSet([]);
+        edges = new vis.DataSet([]);
+
+        // create a network
+        var container = document.getElementById('mynetwork');
+        var data = {
+            nodes: nodes,
+            edges: edges
+        };
+        var options = {};
+        network = new vis.Network(container, data, options);
+    }
+    
+    function add_node_to_graph( node_record ){
+        if ( node_record.type == "object" ){
+            nodes.add({ id: node_record.name, label: node_record.name, color: 'red' });
+        } else if ( node_record.type == "morphism" ){
+            nodes.add({ id: node_record.name, label: node_record.name, color:'blue' });
+            edges.add({ from: node_record.source, to: node_record.name, color:{color:'blue'} });
+            edges.add({ from: node_record.name, to: node_record.range, arrows: 'to', color:{color:'blue'} });
+        } else if ( node_record.type == "operation" ){
+            nodes.add({ id: current, label: node_record.name, color: 'yellow' });
+            edges.add({ from: current, to: node_record.result, color: 'yellow', arrows: 'middle' });
+            for(var i = 0;i<node_record.arguments.length;i++){
+              edges.add({ from: node_record.arguments[ i ], to: current, arrows: 'middle', color:{color:'yellow'} });
+            }
+        }
+    }
+    
+    function next() {
+        if(current>=graph_data.length){
+            return;
+        }
+        var next_step=graph_data[current];
+        add_node_to_graph(next_step);
+        document.getElementById("current_frame").innerHTML = (current + 1).toString();
+        current++;
+        network.stabilize();
+    }
+    
+    function play_recursive( ) {
+        if(current >= graph_data.length ){
+            return;
+        }
+        if(! animate ){
+            return;
+        }
+        add_node_to_graph( graph_data[ current ] );
+        document.getElementById("current_frame").innerHTML = (current+1).toString();
+        current++;
+        if( stabilize_animation ){
+            network.stabilize();
+        }
+        setTimeout( play_recursive, speed );
+    }
+    
+    function play() {
+        animate = true;
+        speed = document.getElementById("animation_speed").value;
+        stabilize_animation = document.getElementById( "animation_force_stabilize" ).checked;
+        if( speed == 0 ){
+            speed = 2000;
+        }
+        play_recursive( );
+    }
+
+    function pause() {
+        animate = false;
+    }
+
+    function restart() {
+        nodes.clear();
+        edges.clear();
+        nodes.add([]);
+        edges.add([]);
+        current=0;
+        document.getElementById("current_frame").innerHTML = "0";
+    }
+    
+    document.getElementById("all_frames").innerHTML = graph_data.length.toString();
+    startNetwork();
+</script>
+
+</body>
+</html>
